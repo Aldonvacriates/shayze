@@ -75,6 +75,33 @@ npx cap add ios
 npm run ios            # opens Xcode
 ```
 
+## Booking form
+
+The form on `/book` posts to whatever URL is in `VITE_BOOKING_ENDPOINT`. Without one, it runs in demo mode (logs to the console, shows the success screen). The endpoint must accept `POST application/json`.
+
+**Quick setup with Formspree (free, no backend code):**
+
+1. Sign up at [formspree.io](https://formspree.io) and create a form
+2. Copy your form's endpoint URL (e.g. `https://formspree.io/f/xyz12345`)
+3. Locally: copy `.env.example` to `.env` and paste the URL
+4. On Vercel: Project Settings → **Environment Variables** → add `VITE_BOOKING_ENDPOINT` for Production + Preview
+
+Submission shape (you'll get this delivered as an email or webhook):
+
+```json
+{
+  "pickup": "Honolulu Airport",
+  "dropoff": "Four Seasons Maui",
+  "date": "2026-06-12",
+  "time": "14:30",
+  "vehicleType": "suv",
+  "passengers": "4",
+  "_subject": "New Shayze reservation: Honolulu Airport → Four Seasons Maui"
+}
+```
+
+Drop-in compatible alternatives: Web3Forms, Getform, or any custom Vercel serverless function at `/api/book`.
+
 ## Deploying to Vercel
 
 The repo includes a [`vercel.json`](./vercel.json) with the Vite preset, SPA rewrites, asset cache headers, and the correct content type for `manifest.webmanifest`.
@@ -96,16 +123,32 @@ The PWA needs HTTPS to be installable on iOS, which Vercel provides automaticall
 ```
 shayze/
 ├── src/
-│   ├── app/App.tsx          # The full Shayze landing page
+│   ├── app/App.tsx          # Router (routes definition)
+│   ├── components/          # Layout, Header (sticky nav), Footer
+│   ├── pages/               # Home, About, Services, Fleet, Book, Contact, NotFound
+│   ├── lib/booking.ts       # Form submission helper (env-driven)
 │   ├── styles/index.css     # Tailwind entry + Playfair/Inter fonts
-│   └── main.tsx             # React entry; wires StatusBar + SplashScreen on native
+│   └── main.tsx             # React entry; BrowserRouter + native StatusBar/SplashScreen
 ├── public/                  # PWA icons, favicon, apple-touch-icon
 ├── android/                 # Capacitor Android project (commit; build outputs gitignored)
+├── .env.example             # Copy to .env and fill in VITE_BOOKING_ENDPOINT
 ├── vite.config.ts           # Vite + PWA plugin (manifest, runtime caching)
 ├── capacitor.config.ts      # appId: com.shayze.app, webDir: dist
 ├── vercel.json              # Vite preset + SPA rewrites + cache headers
 └── tsconfig*.json
 ```
+
+## Routes
+
+| Path | Page |
+|---|---|
+| `/` | Home — hero, why-choose, testimonials, CTA |
+| `/about` | About — story, values, stats |
+| `/services` | Full services grid |
+| `/fleet` | Fleet cards; "Select" prefills the booking form |
+| `/book` | Reservation form (env-driven submission) |
+| `/contact` | Phone, email, service area, hours |
+| `*` | Branded 404 |
 
 ## Brand reference
 
@@ -126,6 +169,11 @@ shayze/
 5. **Why Choose Shayze** — chauffeurs, availability, licensing
 6. **Testimonials** — 3 client quotes with star ratings
 7. **Footer** — services, company, contact, social, "Licensed & Insured | Serving All Hawaiian Islands"
+
+## Authors
+
+- [Aldonvacriates](https://github.com/Aldonvacriates)
+- [BartuClskn](https://github.com/BartuClskn)
 
 ## License
 

@@ -1,30 +1,51 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
+import { submitBooking, type BookingPayload } from '../lib/booking';
 
-type BookingState = { vehicleType?: string };
+type RouterState = { vehicleType?: string };
+
+const EMPTY: BookingPayload = {
+  pickup: '',
+  dropoff: '',
+  date: '',
+  time: '',
+  vehicleType: '',
+  passengers: '',
+};
 
 export default function Book() {
   const location = useLocation();
-  const presetVehicle = (location.state as BookingState | null)?.vehicleType ?? '';
+  const presetVehicle = (location.state as RouterState | null)?.vehicleType ?? '';
 
-  const [formData, setFormData] = useState({
-    pickup: '',
-    dropoff: '',
-    date: '',
-    time: '',
-    vehicleType: presetVehicle,
-    passengers: '',
-  });
-  const [submitted, setSubmitted] = useState(false);
+  const [formData, setFormData] = useState<BookingPayload>({ ...EMPTY, vehicleType: presetVehicle });
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState<string>('');
+  const [localOnly, setLocalOnly] = useState(false);
 
   useEffect(() => {
     if (presetVehicle) setFormData((d) => ({ ...d, vehicleType: presetVehicle }));
   }, [presetVehicle]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Booking submitted:', formData);
-    setSubmitted(true);
+    setStatus('submitting');
+    setErrorMsg('');
+    const result = await submitBooking(formData);
+    if (result.ok) {
+      setLocalOnly(result.mode === 'local-only');
+      setStatus('success');
+    } else {
+      setErrorMsg(result.error);
+      setStatus('error');
+    }
+  };
+
+  const reset = () => {
+    setFormData({ ...EMPTY });
+    setStatus('idle');
+    setErrorMsg('');
+    setLocalOnly(false);
   };
 
   return (
@@ -40,18 +61,23 @@ export default function Book() {
           </p>
         </div>
 
-        {submitted ? (
+        {status === 'success' ? (
           <div className="bg-[#0A0A0A] border border-[#C9A84C]/30 p-12 text-center">
             <h2 className="text-3xl mb-4 text-[#C9A84C]" style={{ fontFamily: 'Playfair Display, serif' }}>
               Reservation Received
             </h2>
-            <p className="text-[#F5F0E8]/80 mb-6">
+            <p className="text-[#F5F0E8]/80 mb-2">
               Thank you. A Shayze concierge will contact you shortly to confirm the details.
             </p>
+            {localOnly && (
+              <p className="text-[#F5F0E8]/50 text-sm mb-6">
+                (Demo mode — no booking endpoint configured. Set <code className="text-[#C9A84C]">VITE_BOOKING_ENDPOINT</code> to receive real submissions.)
+              </p>
+            )}
             <button
               type="button"
-              onClick={() => { setSubmitted(false); setFormData({ pickup: '', dropoff: '', date: '', time: '', vehicleType: '', passengers: '' }); }}
-              className="border border-[#C9A84C] text-[#C9A84C] px-8 py-3 hover:bg-[#C9A84C] hover:text-[#0A0A0A] transition-all duration-300"
+              onClick={reset}
+              className="border border-[#C9A84C] text-[#C9A84C] px-8 py-3 hover:bg-[#C9A84C] hover:text-[#0A0A0A] transition-all duration-300 mt-4"
             >
               Make Another Reservation
             </button>
@@ -68,6 +94,7 @@ export default function Book() {
                   onChange={(e) => setFormData({ ...formData, pickup: e.target.value })}
                   className="w-full bg-[#0A0A0A] border border-[#C9A84C]/30 px-4 py-3 text-[#F5F0E8] focus:border-[#C9A84C] focus:outline-none transition-colors"
                   placeholder="Enter pickup address"
+                  disabled={status === 'submitting'}
                 />
               </div>
               <div>
@@ -79,6 +106,7 @@ export default function Book() {
                   onChange={(e) => setFormData({ ...formData, dropoff: e.target.value })}
                   className="w-full bg-[#0A0A0A] border border-[#C9A84C]/30 px-4 py-3 text-[#F5F0E8] focus:border-[#C9A84C] focus:outline-none transition-colors"
                   placeholder="Enter destination"
+                  disabled={status === 'submitting'}
                 />
               </div>
             </div>
@@ -92,6 +120,7 @@ export default function Book() {
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   className="w-full bg-[#0A0A0A] border border-[#C9A84C]/30 px-4 py-3 text-[#F5F0E8] focus:border-[#C9A84C] focus:outline-none transition-colors"
+                  disabled={status === 'submitting'}
                 />
               </div>
               <div>
@@ -102,6 +131,7 @@ export default function Book() {
                   value={formData.time}
                   onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                   className="w-full bg-[#0A0A0A] border border-[#C9A84C]/30 px-4 py-3 text-[#F5F0E8] focus:border-[#C9A84C] focus:outline-none transition-colors"
+                  disabled={status === 'submitting'}
                 />
               </div>
             </div>
@@ -114,6 +144,7 @@ export default function Book() {
                   value={formData.vehicleType}
                   onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value })}
                   className="w-full bg-[#0A0A0A] border border-[#C9A84C]/30 px-4 py-3 text-[#F5F0E8] focus:border-[#C9A84C] focus:outline-none transition-colors"
+                  disabled={status === 'submitting'}
                 >
                   <option value="">Select vehicle</option>
                   <option value="sedan">Luxury Sedan (1-3 passengers)</option>
@@ -133,15 +164,30 @@ export default function Book() {
                   max="12"
                   className="w-full bg-[#0A0A0A] border border-[#C9A84C]/30 px-4 py-3 text-[#F5F0E8] focus:border-[#C9A84C] focus:outline-none transition-colors"
                   placeholder="1"
+                  disabled={status === 'submitting'}
                 />
               </div>
             </div>
 
+            {status === 'error' && (
+              <div className="mb-6 border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
+                {errorMsg || 'Something went wrong. Please call us directly.'}
+              </div>
+            )}
+
             <button
               type="submit"
-              className="w-full bg-[#C9A84C] text-[#0A0A0A] py-4 text-lg font-semibold hover:bg-[#d4b55e] transition-all duration-300 hover:shadow-[0_0_30px_rgba(201,168,76,0.5)]"
+              disabled={status === 'submitting'}
+              className="w-full bg-[#C9A84C] text-[#0A0A0A] py-4 text-lg font-semibold hover:bg-[#d4b55e] transition-all duration-300 hover:shadow-[0_0_30px_rgba(201,168,76,0.5)] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Reserve Now
+              {status === 'submitting' ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Submitting…
+                </>
+              ) : (
+                'Reserve Now'
+              )}
             </button>
 
             <div className="mt-6 text-center">
