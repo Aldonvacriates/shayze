@@ -27,7 +27,7 @@ Concept site, not a launched client site: a mobile-first luxury transportation b
 
 ## How it works
 
-- **Configurable booking endpoint** (`src/lib/booking.ts`). `submitBooking()` POSTs JSON to whatever URL is in `VITE_BOOKING_ENDPOINT` and returns a typed `BookingResult` union (`{ ok: true, mode: 'submitted' | 'local-only' }` or `{ ok: false, error }`). When the variable is unset it logs the payload and returns `local-only`, which `src/pages/Book.tsx` uses to show a demo-mode notice on the success screen. Any service that accepts `POST application/json` works (for example a Formspree form).
+- **Configurable booking endpoint** (`src/lib/booking.ts`). `submitBooking()` POSTs JSON to whatever URL is in `VITE_BOOKING_ENDPOINT` and returns a typed `BookingResult` union (`{ ok: true, mode: 'submitted' | 'local-only' }` or `{ ok: false, error }`). When the variable is unset it logs the payload and returns `local-only`, which `src/pages/Book.tsx` uses to show a demo-mode notice on the success screen. Any endpoint that accepts a cross-origin `POST` with an `application/json` body works (for example a Formspree form).
 - **Fleet-to-booking handoff through router state.** `src/pages/Fleet.tsx` calls `navigate('/book', { state: { vehicleType } })`, and `Book.tsx` reads it with `useLocation()` to prefill the vehicle select. No global store or query string needed.
 - **PWA plus static hosting config** (`vite.config.ts`, `vercel.json`). The PWA plugin uses `registerType: 'autoUpdate'`, precaches built assets, and adds `CacheFirst` runtime caches for Unsplash images and Google Fonts. `vercel.json` rewrites non-asset paths to `index.html` for client-side routing, serves `sw.js` with `max-age=0, must-revalidate` so updates are picked up, and sets the `application/manifest+json` content type for the manifest.
 - **One codebase, web and native** (`src/main.tsx`, `capacitor.config.ts`). Native-only calls (status bar style, hiding the splash screen) run behind `Capacitor.isNativePlatform()`, so the same bundle works in the browser and inside the Android shell.
@@ -36,7 +36,7 @@ Concept site, not a launched client site: a mobile-first luxury transportation b
 
 ### Prerequisites
 
-- Node.js 22 or newer (required by `@capacitor/cli` 8; the web app alone runs on Vite 5)
+- Node.js 22 or newer (required by `@capacitor/cli` 8; the web build alone needs Node 20+ for Tailwind v4 and Workbox)
 - For the Android build: Android Studio and JDK 21 (`android/app/capacitor.build.gradle` targets Java 21)
 
 ### Install and run
