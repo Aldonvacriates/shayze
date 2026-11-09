@@ -1,92 +1,62 @@
 # Shayze
 
-Premium VIP transportation across the Hawaiian Islands — luxury booking website, installable as a PWA on any phone, and packaged as a native Android app via Capacitor.
+Concept site, not a launched client site: a mobile-first luxury transportation booking PWA for Hawaii, also packaged as an Android app with Capacitor from the same React + TypeScript codebase.
 
-> Midnight black. Champagne gold. Ivory white. Built mobile-first.
+**Live demo:** [shayze.vercel.app](https://shayze.vercel.app). The deployed build has no booking endpoint configured, so the `/book` form runs in demo mode and does not send submissions anywhere.
+
+**About the content:** everything on the site is illustrative. The phone number (`+1 (808) 555-1234`), the `info@shayze.com` address, the three named testimonials, the About page stats, the "Licensed & Insured" and regulatory-compliance lines, the flight-tracking and on-time-guarantee copy, and the social links (`href="#"`) are placeholders. Vehicle and hero photos are loaded from Unsplash.
+
+## Features
+
+- Seven routed pages with React Router: Home, About, Services, Fleet, Book, Contact and a branded 404
+- Booking form (pickup, drop-off, date, time, vehicle type, passengers) with loading, error and success states
+- "Select" on a fleet card opens the booking form with that vehicle preselected
+- Installable PWA: web manifest, app icons, service worker with precaching and runtime caching for fonts and images
+- Android app via Capacitor 8, with native status bar and splash screen handling
+- Vercel config with SPA rewrites and cache headers
 
 ## Tech stack
 
-- **Vite 5** + **React 18** + **TypeScript**
-- **Tailwind CSS v4**
-- **lucide-react** icons
-- **vite-plugin-pwa** (Workbox) — installable, offline-capable
-- **Capacitor 8** — native Android wrapper (iOS-ready)
-- **Vercel** — production hosting
+- Vite 5, React 18, TypeScript
+- React Router 6
+- Tailwind CSS v4 (via `@tailwindcss/postcss`)
+- lucide-react icons
+- vite-plugin-pwa (Workbox)
+- Capacitor 8 (Android project committed in `android/`)
+- Vercel hosting
 
-## Quick start
+## How it works
+
+- **Configurable booking endpoint** (`src/lib/booking.ts`). `submitBooking()` POSTs JSON to whatever URL is in `VITE_BOOKING_ENDPOINT` and returns a typed `BookingResult` union (`{ ok: true, mode: 'submitted' | 'local-only' }` or `{ ok: false, error }`). When the variable is unset it logs the payload and returns `local-only`, which `src/pages/Book.tsx` uses to show a demo-mode notice on the success screen. Any service that accepts `POST application/json` works (for example a Formspree form).
+- **Fleet-to-booking handoff through router state.** `src/pages/Fleet.tsx` calls `navigate('/book', { state: { vehicleType } })`, and `Book.tsx` reads it with `useLocation()` to prefill the vehicle select. No global store or query string needed.
+- **PWA plus static hosting config** (`vite.config.ts`, `vercel.json`). The PWA plugin uses `registerType: 'autoUpdate'`, precaches built assets, and adds `CacheFirst` runtime caches for Unsplash images and Google Fonts. `vercel.json` rewrites non-asset paths to `index.html` for client-side routing, serves `sw.js` with `max-age=0, must-revalidate` so updates are picked up, and sets the `application/manifest+json` content type for the manifest.
+- **One codebase, web and native** (`src/main.tsx`, `capacitor.config.ts`). Native-only calls (status bar style, hiding the splash screen) run behind `Capacitor.isNativePlatform()`, so the same bundle works in the browser and inside the Android shell.
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 22 or newer (required by `@capacitor/cli` 8; the web app alone runs on Vite 5)
+- For the Android build: Android Studio and JDK 21 (`android/app/capacitor.build.gradle` targets Java 21)
+
+### Install and run
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://localhost:5173, also exposed on your LAN (--host)
 ```
 
-`npm run dev` uses `--host`, so the URL Vite prints under "Network" is reachable from any phone on the same Wi-Fi.
+### Environment variables
 
-## Scripts
+Copy `.env.example` to `.env`. It has one variable:
 
-| Script | Purpose |
+| Variable | Purpose |
 |---|---|
-| `npm run dev` | Start Vite dev server with hot reload, exposed on LAN |
-| `npm run build` | Type-check (`tsc -b`) and produce a production build in `dist/` |
-| `npm run preview` | Serve the production build locally for sanity checks |
-| `npm run android` | `cap sync android && cap open android` — push the latest web build into the Android wrapper and open in Android Studio |
-| `npm run ios` | Same for iOS (requires macOS + Xcode) |
+| `VITE_BOOKING_ENDPOINT` | URL the booking form POSTs to. Leave blank for demo mode. |
 
-## Testing on a phone
+`VITE_` variables are inlined at build time, so on Vercel set it under Project Settings > Environment Variables and redeploy.
 
-Four levels of fidelity, easiest first:
-
-### 1. Browser on the same Wi-Fi (no install)
-
-Run `npm run dev`, then open the `Network` URL on your phone. Best for iterating.
-
-### 2. Install as a PWA (looks native, no app store)
-
-After deploying to Vercel (or any HTTPS host), visit the site on the phone:
-
-- **Android Chrome** — menu → "Install app"
-- **iOS Safari** — share → "Add to Home Screen"
-
-Launches fullscreen with the Shayze icon, dark theme, splash, and offline cache for fonts and Unsplash images. **This is the cleanest way to ship to iOS without owning a Mac.**
-
-### 3. Android APK via Capacitor
-
-Requires JDK 17 and Android Studio.
-
-```bash
-npm run build
-npx cap sync android
-npm run android        # opens Android Studio — click ▶ to install on connected device
-```
-
-Or build a sideloadable APK from the command line:
-
-```bash
-cd android
-./gradlew assembleDebug    # Windows: gradlew.bat assembleDebug
-# output: android/app/build/outputs/apk/debug/app-debug.apk
-```
-
-### 4. iOS native (requires macOS)
-
-```bash
-npm install @capacitor/ios
-npx cap add ios
-npm run ios            # opens Xcode
-```
-
-## Booking form
-
-The form on `/book` posts to whatever URL is in `VITE_BOOKING_ENDPOINT`. Without one, it runs in demo mode (logs to the console, shows the success screen). The endpoint must accept `POST application/json`.
-
-**Quick setup with Formspree (free, no backend code):**
-
-1. Sign up at [formspree.io](https://formspree.io) and create a form
-2. Copy your form's endpoint URL (e.g. `https://formspree.io/f/xyz12345`)
-3. Locally: copy `.env.example` to `.env` and paste the URL
-4. On Vercel: Project Settings → **Environment Variables** → add `VITE_BOOKING_ENDPOINT` for Production + Preview
-
-Submission shape (you'll get this delivered as an email or webhook):
+Payload sent to the endpoint:
 
 ```json
 {
@@ -100,75 +70,69 @@ Submission shape (you'll get this delivered as an email or webhook):
 }
 ```
 
-Drop-in compatible alternatives: Web3Forms, Getform, or any custom Vercel serverless function at `/api/book`.
+### Scripts
 
-## Deploying to Vercel
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Vite dev server with hot reload, exposed on LAN |
+| `npm run build` | Type-check (`tsc -b`) and build to `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run android` | `cap sync android && cap open android` (opens Android Studio) |
+| `npm run ios` | `cap sync ios && cap open ios` (only works after adding iOS, see below) |
 
-The repo includes a [`vercel.json`](./vercel.json) with the Vite preset, SPA rewrites, asset cache headers, and the correct content type for `manifest.webmanifest`.
+### Tests
 
-**Option A — CLI:**
+There is no automated test suite yet. `npm run build` runs the TypeScript type check. The only tests under `android/` are the default Capacitor template tests.
+
+### Android build
+
 ```bash
-npm i -g vercel
-vercel              # first time: log in, accept defaults
-vercel --prod       # promote to production
+npm run build
+npx cap sync android
+npm run android               # opens Android Studio; run on a device or emulator from there
 ```
 
-**Option B — GitHub integration:**
-Push to GitHub, then on [vercel.com/new](https://vercel.com/new), import the repo and click Deploy. Every push to `main` ships to prod; every PR gets a preview URL.
+Or build a debug APK from the command line:
 
-The PWA needs HTTPS to be installable on iOS, which Vercel provides automatically.
+```bash
+cd android
+./gradlew assembleDebug       # Windows: gradlew.bat assembleDebug
+# output: android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### iOS
+
+iOS is not set up in this repo (no `ios/` directory, and `@capacitor/ios` is not a dependency). On macOS with Xcode it can be added with `npm install @capacitor/ios && npx cap add ios`, then `npm run ios`. Without a Mac, the PWA can be installed on iPhone from Safari with Share > Add to Home Screen.
+
+### Deploying
+
+`vercel.json` sets the Vite framework preset, build command, output directory, rewrites and headers. Deploy with the Vercel CLI (`vercel`, then `vercel --prod`) or by importing the repo at [vercel.com/new](https://vercel.com/new). The PWA needs HTTPS to be installable, which Vercel provides.
 
 ## Project structure
 
 ```
 shayze/
 ├── src/
-│   ├── app/App.tsx          # Router (routes definition)
-│   ├── components/          # Layout, Header (sticky nav), Footer
+│   ├── app/App.tsx          # Route definitions
+│   ├── components/          # Layout, Header, Footer
 │   ├── pages/               # Home, About, Services, Fleet, Book, Contact, NotFound
-│   ├── lib/booking.ts       # Form submission helper (env-driven)
-│   ├── styles/index.css     # Tailwind entry + Playfair/Inter fonts
-│   └── main.tsx             # React entry; BrowserRouter + native StatusBar/SplashScreen
+│   ├── lib/booking.ts       # Booking submission helper (env-driven)
+│   ├── styles/index.css     # Tailwind entry, fonts, safe-area padding
+│   └── main.tsx             # React entry, BrowserRouter, native status bar / splash
 ├── public/                  # PWA icons, favicon, apple-touch-icon
-├── android/                 # Capacitor Android project (commit; build outputs gitignored)
-├── .env.example             # Copy to .env and fill in VITE_BOOKING_ENDPOINT
+├── android/                 # Capacitor Android project (build outputs gitignored)
+├── .env.example             # VITE_BOOKING_ENDPOINT
 ├── vite.config.ts           # Vite + PWA plugin (manifest, runtime caching)
-├── capacitor.config.ts      # appId: com.shayze.app, webDir: dist
-├── vercel.json              # Vite preset + SPA rewrites + cache headers
-└── tsconfig*.json
+├── capacitor.config.ts      # appId com.shayze.app, webDir dist
+└── vercel.json              # Vite preset, SPA rewrites, cache headers
 ```
 
-## Routes
+## What I'd improve next
 
-| Path | Page |
-|---|---|
-| `/` | Home — hero, why-choose, testimonials, CTA |
-| `/about` | About — story, values, stats |
-| `/services` | Full services grid |
-| `/fleet` | Fleet cards; "Select" prefills the booking form |
-| `/book` | Reservation form (env-driven submission) |
-| `/contact` | Phone, email, service area, hours |
-| `*` | Branded 404 |
-
-## Brand reference
-
-| Token | Value |
-|---|---|
-| Background | `#0A0A0A` (midnight black) |
-| Accent / CTA | `#C9A84C` (champagne gold) |
-| Text | `#F5F0E8` (ivory) |
-| Heading font | Playfair Display |
-| Body font | Inter |
-
-## Sections
-
-1. **Hero** — full-bleed Hawaii sunset backdrop, CTA scrolls to booking
-2. **Services** — 6-card grid: airport transfers, island tours, corporate, weddings, yacht/resort, 24/7
-3. **Booking** — pickup/dropoff, date/time, vehicle type, passengers, "Reserve Now"
-4. **Fleet** — sedan / SUV / Sprinter / limo cards; "Select" prefills the booking form
-5. **Why Choose Shayze** — chauffeurs, availability, licensing
-6. **Testimonials** — 3 client quotes with star ratings
-7. **Footer** — services, company, contact, social, "Licensed & Insured | Serving All Hawaiian Islands"
+- Add Vitest tests for `submitBooking()` covering the demo, success and error paths
+- Move the hard-coded brand colors (`#0A0A0A`, `#C9A84C`, `#F5F0E8`) and inline font styles into Tailwind v4 `@theme` tokens
+- Connect a real booking endpoint and add basic form validation and spam protection
+- Add the iOS project
 
 ## Authors
 
@@ -177,4 +141,4 @@ shayze/
 
 ## License
 
-Proprietary. All rights reserved.
+No license file is included. All rights reserved.
